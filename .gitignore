@@ -2,3 +2,5 @@ out.png
 *.pyc
 .*.swp
 notebook/*
+objs/teapot.obj
+
