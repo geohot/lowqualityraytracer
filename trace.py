@@ -33,6 +33,7 @@ def fast_triangle_mesh_drawer(tris, origin, look):
   look /= norm(look)
 
   img = np.zeros((Y, X))
+  zimg = np.ones((Y, X))*np.inf
 
   def project_point(pt):
     # vector from pt to origin
@@ -95,7 +96,38 @@ def fast_triangle_mesh_drawer(tris, origin, look):
     polys = []
     for tr in tris:
       xyz = npa(map(project_point, tr))
-      polys.append((np.mean(xyz[:, 2]), xyz))
+
+      # get min and max
+      xmin, xmax = np.min(xyz[:, 0]), np.max(xyz[:, 0])
+      ymin, ymax = np.min(xyz[:, 1]), np.max(xyz[:, 1])
+
+      # on screen
+      xmin = np.clip(xmin, 0, X).astype(np.int)
+      xmax = np.clip(xmax, 0, X).astype(np.int)
+      ymin = np.clip(ymin, 0, Y).astype(np.int)
+      ymax = np.clip(ymax, 0, Y).astype(np.int)
+
+      # triangle in 3 space
+      vs1 = xyz[1][0:2] - xyz[0][0:2]
+      vs2 = xyz[2][0:2] - xyz[0][0:2]
+      vsx = np.cross(vs1, vs2)
+
+      # shade
+      shade = random.uniform(0.3, 1.0)
+
+      for x in range(xmin, xmax):
+        for y in range(ymin, ymax):
+          q = npa([x,y]) - xyz[0][0:2]
+          u = np.cross(q, vs2) / vsx
+          v = np.cross(vs1, q) / vsx
+          if u >= 0 and v >= 0 and u+v <= 1.0:
+            pt_xyz = (1-u-v)*xyz[0] + u*xyz[1] + v*xyz[2]
+            if pt_xyz[2] < zimg[y,x]:
+              zimg[y,x] = pt_xyz[2]
+              img[y,x] = shade
+      #polys.append((np.mean(xyz[:, 2]), xyz))
+     
+    """
     polys = sorted(polys, reverse=True, key=lambda x: x[0])
     for _, xyz in polys:
       rr, cc = polygon(xyz[:, 1], xyz[:, 0])
@@ -103,11 +135,16 @@ def fast_triangle_mesh_drawer(tris, origin, look):
       rr[np.logical_or(rr < 0, rr >= Y)] = 0
       cc[np.logical_or(cc < 0, cc >= X)] = 0
       img[rr, cc] = random.uniform(0.3, 1.0)
+    """
   return img
 
 # *** do shit
 tris = load_obj("objs/cube.obj")
 #tris = load_obj("objs/teapot.obj")
+
+# add ground plane
+tris.append(([-3, -0.5, -3], [3, -0.5, -3], [3, -0.5, 3]))
+tris.append(([-3, -0.5, -3], [-3, -0.5, 3], [3, -0.5, 3]))
 
 SCALE = 1/10.0
 LSCALE = 1/100.0
