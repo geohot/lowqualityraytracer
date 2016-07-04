@@ -41,16 +41,21 @@ def fast_triangle_mesh_drawer(tris, origin, look):
 
     # real projection shit
     vx = npa((v[0], 0, v[2]))
+    lx = npa((look[0], 0, look[2]))
     vy = npa((0, v[1], v[2]))
-    vx /= norm(vx)
-    vy /= norm(vy)
+    ly = npa((0, look[1], look[2]))
+    def ang(v1, v2):
+      v1 /= norm(v1)
+      v2 /= norm(v2)
+      angl = np.dot(v1, v2)
+      crs = np.cross(v1, v2)
+      if np.sum(crs) >= 0.0:
+        return np.arccos(angl)
+      else:
+        return -np.arccos(angl)
 
-    x = (np.arccos(np.dot(vx, look)) / arcrad_per_pixel)
-    if v[0] < 0.0:
-      x = -x
-    y = (np.arccos(np.dot(vy, look)) / arcrad_per_pixel)
-    if v[1] < 0.0:
-      y = -y
+    x = (ang(vx, lx) / arcrad_per_pixel)
+    y = (ang(vy, ly) / arcrad_per_pixel)
 
     """
     print " *** "
@@ -135,12 +140,14 @@ def raytrace(tris, origin, look):
   return img
 
 # *** do shit
-#tris = load_obj("objs/cube.obj")
-tris = load_obj("objs/teapot.obj")
+tris = load_obj("objs/cube.obj")
+#tris = load_obj("objs/teapot.obj")
 
 SCALE = 1/10.0
+LSCALE = 1/100.0
 
-origin = -500*K + I + J
+origin = -10*K + I + J
+#origin = -500*K + I + J
 look = K
 
 import pygame
@@ -162,14 +169,28 @@ while 1:
 
   keys_pressed = pygame.key.get_pressed()
 
-  if keys_pressed[pygame.K_LEFT]:
+  # moving
+  if keys_pressed[pygame.K_a]:
     origin += I*SCALE
-  if keys_pressed[pygame.K_RIGHT]:
+  if keys_pressed[pygame.K_d]:
     origin -= I*SCALE
-  if keys_pressed[pygame.K_UP]:
+  if keys_pressed[pygame.K_w]:
     origin -= J*SCALE
-  if keys_pressed[pygame.K_DOWN]:
+  if keys_pressed[pygame.K_s]:
     origin += J*SCALE
+
+  # looking, DOESN'T WORK!
+  if keys_pressed[pygame.K_LEFT]:
+    look += I*LSCALE
+  if keys_pressed[pygame.K_RIGHT]:
+    look -= I*LSCALE
+  if keys_pressed[pygame.K_UP]:
+    look += J*LSCALE
+  if keys_pressed[pygame.K_DOWN]:
+    look -= J*LSCALE
+  look /= norm(look)
+
+  print "drawing", origin, look
 
 # save the image
 #scipy.misc.imsave("out.png", img)
