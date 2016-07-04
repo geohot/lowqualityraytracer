@@ -91,7 +91,7 @@ def fast_triangle_mesh_drawer(tris, origin, look):
 
       img[rr, cc] = val
   else:
-    # z-buffering
+    # z-buffering, keeping the quality low in line with the rest of the program
     polys = []
     for tr in tris:
       xyz = npa(map(project_point, tr))
@@ -112,7 +112,7 @@ tris = load_obj("objs/cube.obj")
 SCALE = 1/10.0
 LSCALE = 1/100.0
 
-origin = -10*K + I + J
+origin = -10*K + I + 2*J
 #origin = -500*K + I + J
 look = K
 
@@ -141,9 +141,16 @@ while 1:
   if keys_pressed[pygame.K_d]:
     origin -= I*SCALE
   if keys_pressed[pygame.K_w]:
-    origin -= J*SCALE
+    origin += K*SCALE
   if keys_pressed[pygame.K_s]:
+    origin -= K*SCALE
+
+  # taller/shorter
+  if keys_pressed[pygame.K_z]:
     origin += J*SCALE
+  if keys_pressed[pygame.K_x]:
+    origin -= J*SCALE
+
 
   # looking, DOESN'T WORK!
   if keys_pressed[pygame.K_LEFT]:
