@@ -1,18 +1,22 @@
+#!/usr/bin/env python
 import numpy as np
 from numpy import array as npa
 import scipy.misc
 
+np.set_printoptions(suppress=True)
 
-X = 80
-Y = 80
+
+X = 40
+Y = 40
 arcrad_per_pixel = 0.005
 
 # place the image point at the origin
-origin = np.array([0.0,0.0,0.0])
 
 I = np.array([1.0,0.0,0.0])
 J = np.array([0.0,1.0,0.0])
 K = np.array([0.0,0.0,1.0])
+
+origin = -10*K
 
 from scipy.linalg import expm3, norm
 
@@ -30,21 +34,23 @@ obj = open("cube.obj").read().split("\n")
 
 # read vertices
 vertices = npa(map(lambda x: map(float, x.split(" ")[1:]), filter(lambda x: x[0:2] == "v ", obj)))
-vertices += K*10
+#vertices += K*10
 
 # read in faces
 tris = map(lambda x: parse_face(x, vertices), filter(lambda x: x[0:2] == "f ", obj))
 print len(tris), "triangles"
 
-img = np.zeros((Y, X))
+for i, tr in enumerate(tris):
+  print i, tr
+
+img = np.zeros((X, Y))
 
 # do raytracing
-for y in range(Y):
-  for x in range(X):
-    x_rad = (x - (X/2)) * arcrad_per_pixel
-    y_rad = (y - (Y/2)) * arcrad_per_pixel
-    rot = np.dot(M(I, x_rad), M(J, y_rad))
+for y in range(-Y/2, Y/2):
+  for x in range(-X/2, X/2):
+    rot = np.dot(M(I, x * arcrad_per_pixel), M(J, y * arcrad_per_pixel))
     ray = np.dot(rot, K)
+    #print ray, x, y
 
     # check ray for intersection with each triangle
     #   equation for triangle is point(u,v) = (1-u-v)*p0 + u*p1 + v*p2
@@ -70,13 +76,28 @@ for y in range(Y):
       q = np.cross(s, e1)
       v = f * np.dot(ray, q)
 
-      if v < 0.0 or v > 1.0:
+      if v < 0.0 or (u+v) > 1.0:
         continue
 
       t = f * np.dot(e2, q)
 
-      print t, tr, ray, x, y
-      img[y][x] = 1.0 
+      # check work
+      intersection_point = origin + t * ray
+      triangle_point = (1-u-v)*tr[0] + u*tr[1] + v*tr[2]
+      assert (intersection_point-triangle_point < 0.0001).all()
+
+      # debugging
+      """
+      print "*** intersection"
+      print "   ray", x, y, ray
+      print "   tri", tr
+      print "   intersects", t, intersection_point, u, v
+      print triangle_point
+      exit(0)
+      """
+
+      # err, shading?
+      img[x + X/2][y + Y/2] = (12.0-t)/4.0
 
 
 # save the image

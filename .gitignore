@@ -1,3 +1,4 @@
 out.png
 *.pyc
 .*.swp
+notebook/*
