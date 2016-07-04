@@ -3,10 +3,12 @@ import time
 import numpy as np
 from numpy import array as npa
 import scipy.misc
+import random
 from helpers import load_obj
 
 from scipy.linalg import expm3, norm
 from skimage.draw import line_aa
+from skimage.draw import polygon
 
 # *** basic math things ***
 
@@ -27,17 +29,15 @@ X,Y,arcrad_per_pixel = 600,600,0.001
 
 # fast triangle mesh drawer draws triangle meshes and is hella fast
 def fast_triangle_mesh_drawer(tris, origin, look):
+  # shouldn't do anything
+  look /= norm(look)
+
   img = np.zeros((Y, X))
-  lines = []
-  for tr in tris:
-    lines.append((tr[0], tr[1]))
-    lines.append((tr[1], tr[2]))
-    lines.append((tr[2], tr[0]))
 
   def project_point(pt):
     # vector from pt to origin
-    v = pt - origin
-    v /= norm(v)
+    vv = pt - origin
+    v = vv/norm(vv)
 
     # real projection shit
     vx = npa((v[0], 0, v[2]))
@@ -57,25 +57,52 @@ def fast_triangle_mesh_drawer(tris, origin, look):
     x = (ang(vx, lx) / arcrad_per_pixel)
     y = (ang(vy, ly) / arcrad_per_pixel)
 
+    # add z for z-buffering
+    # z is the distance of the point from the plane formed by look and origin
+
+    # project v on to look
+    z = np.dot(v, look) * norm(vv)
+
     """
     print " *** "
     print v, K
     print pt, x, y
     """
 
-    return int(round(x + X/2)),int(round(Y/2 - y))
+    return int(round(x + X/2)),int(round(Y/2 - y)), z
 
-  for l1, l2 in lines:
-    pt1, pt2 = project_point(l1), project_point(l2)
-    rr, cc, val = line_aa(pt1[1], pt1[0], pt2[1], pt2[0])
+  # project the triangles into 2D space
+  # does this projection preserve the u and v
+  DRAW_WIREFRAME = False
+  if DRAW_WIREFRAME:
+    lines = []
+    for tr in tris:
+      p0, p1, p2 = project_point(tr[0]), project_point(tr[1]), project_point(tr[2])
+      lines.append((p0[0:2], p1[0:2]))
+      lines.append((p1[0:2], p2[0:2]))
+      lines.append((p2[0:2], p0[0:2]))
 
-    # filter
-    rr[rr < 0] = 0
-    cc[cc < 0] = 0
-    rr[rr >= X] = 0
-    cc[cc >= Y] = 0
+    for pt1, pt2 in lines:
+      rr, cc, val = line_aa(pt1[1], pt1[0], pt2[1], pt2[0])
 
-    img[rr, cc] = val
+      # filter
+      rr[np.logical_or(rr < 0, rr >= Y)] = 0
+      cc[np.logical_or(cc < 0, cc >= X)] = 0
+
+      img[rr, cc] = val
+  else:
+    # z-buffering
+    polys = []
+    for tr in tris:
+      xyz = npa(map(project_point, tr))
+      polys.append((np.mean(xyz[:, 2]), xyz))
+    polys = sorted(polys, reverse=True, key=lambda x: x[0])
+    for _, xyz in polys:
+      rr, cc = polygon(xyz[:, 1], xyz[:, 0])
+
+      rr[np.logical_or(rr < 0, rr >= Y)] = 0
+      cc[np.logical_or(cc < 0, cc >= X)] = 0
+      img[rr, cc] = random.uniform(0.3, 1.0)
   return img
 
 # *** do shit
